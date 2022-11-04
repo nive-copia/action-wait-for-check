@@ -10,7 +10,7 @@ async function run(): Promise<void> {
       client: getOctokit(token),
       log: msg => core.info(msg),
 
-      checkName: core.getInput('checkName', {required: true}),
+      checkNames: core.getInput('checkNames', {required: true}),
       owner: core.getInput('owner') || context.repo.owner,
       repo: core.getInput('repo') || context.repo.repo,
       ref: core.getInput('ref') || context.sha,

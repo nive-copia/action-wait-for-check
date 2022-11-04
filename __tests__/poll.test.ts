@@ -12,12 +12,12 @@ const run = () =>
   poll({
     client: client as any,
     log: () => {},
-    checkName: 'test',
+    checkNames: 'test,test1',
     owner: 'testOrg',
     repo: 'testRepo',
     ref: 'abcd',
-    timeoutSeconds: 3,
-    intervalSeconds: 0.1
+    timeoutSeconds: 6,
+    intervalSeconds: 1
   })
 
 test('returns conclusion of completed check', async () => {
@@ -81,15 +81,47 @@ test('polls until check is completed', async () => {
         ]
       }
     })
+    .mockResolvedValueOnce({
+      data: {
+        check_runs: [
+          {
+            id: '2',
+            status: 'pending'
+          }
+        ]
+      }
+    })
+    .mockResolvedValueOnce({
+      data: {
+        check_runs: [
+          {
+            id: '2',
+            status: 'pending'
+          }
+        ]
+      }
+    })
+    .mockResolvedValueOnce({
+      data: {
+        check_runs: [
+          {
+            id: '2',
+            status: 'completed',
+            conclusion: 'failure'
+          }
+        ]
+      }
+    })
 
   const result = await run()
 
   expect(result).toBe('failure')
-  expect(client.rest.checks.listForRef).toHaveBeenCalledTimes(3)
+  expect(client.rest.checks.listForRef).toHaveBeenCalledTimes(6)
 })
 
 test(`returns 'timed_out' if exceeding deadline`, async () => {
-  client.rest.checks.listForRef.mockResolvedValue({
+  client.rest.checks.listForRef
+  .mockResolvedValue({
     data: {
       check_runs: [
         {
