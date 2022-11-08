@@ -1,21 +1,21 @@
 <p align="center">
-  <a href="https://github.com/fountainhead/action-wait-for-check/actions"><img alt="action-wait-for-check status" src="https://github.com/fountainhead/action-wait-for-check/workflows/build-test/badge.svg"></a>
+  <a href="https://github.com/nive-copia/action-wait-for-check"></a>
 </p>
 
-# GitHub Action: Wait for Check
+# GitHub Action: Wait for Single or Multiple Checks
 
 A GitHub Action that allows you to wait for another GitHub check to complete. This is useful if you want to run one Workflow after another one finishes.
 
-## Example Usage
+## Example Usage for Single Check
 
 ```yaml
     steps:
       - name: Wait for build to succeed
-        uses: fountainhead/action-wait-for-check@v1.1.0
+        uses: nive-copia/action-wait-for-check@master
         id: wait-for-build
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          checkName: build
+          checkNames: "build"
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Do something with a passing build
@@ -24,6 +24,49 @@ A GitHub Action that allows you to wait for another GitHub check to complete. Th
       - name: Do something with a failing build
         if: steps.wait-for-build.outputs.conclusion == 'failure'
 ```
+
+## Example Usage for Multiple Checks
+
+```yaml
+    steps:
+      - name: Wait for build to succeed
+        uses: nive-copia/action-wait-for-check@master
+        id: wait-for-build
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          checkNames: "build,deploy"
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Do something with a passing build
+        if: steps.wait-for-build.outputs.conclusion == 'success'
+
+      - name: Do something with a failing build
+        if: steps.wait-for-build.outputs.conclusion == 'failure'
+```
+
+## Example Usage for Multi-lined Checks
+
+```yaml
+    steps:
+      - name: Wait for build to succeed
+        uses: nive-copia/action-wait-for-check@master
+        id: wait-for-build
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          checkNames: "build1,\
+                       build2,\
+                       test1,\
+                       test2,\
+                       deploy"
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Do something with a passing build
+        if: steps.wait-for-build.outputs.conclusion == 'success'
+
+      - name: Do something with a failing build
+        if: steps.wait-for-build.outputs.conclusion == 'failure'
+```
+
 ## Inputs
 
 This Action accepts the following configuration parameters via `with:`
@@ -34,11 +77,11 @@ This Action accepts the following configuration parameters via `with:`
 
   The GitHub token to use for making API requests. Typically, this would be set to `${{ secrets.GITHUB_TOKEN }}`.
 
-- `checkName`
+- `checkNames`
 
   **Required**
 
-  The name of the GitHub check to wait for. For example, `build` or `deploy`.
+  The name of the GitHub check to wait for. For example, `"build"` or `"build,deploy"`.
 
   **IMPORTANT**: If the check you're referencing is provided by another GitHub Actions workflow, make sure that you reference the name of a _Job_ within that workflow, and _not_ the name the _Workflow_ itself.
 
@@ -80,8 +123,12 @@ This Action emits a single output named `conclusion`. Like the field of the same
 
 - `success`
 - `failure`
-- `neutral`
 - `timed_out`
-- `action_required`
 
 These correspond to the `conclusion` state of the Check you're waiting on. In addition, this action will emit a conclusion of `timed_out` if the Check specified didn't complete within `timeoutSeconds`.
+
+## Local Developement
+
+- Checkout the code
+- `yarn all`
+- Ensure unit test passes
