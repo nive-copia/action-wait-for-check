@@ -8,7 +8,11 @@
 
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -45,7 +49,7 @@ function run() {
             const result = yield (0, poll_1.poll)({
                 client: (0, github_1.getOctokit)(token),
                 log: msg => core.info(msg),
-                checkName: core.getInput('checkName', { required: true }),
+                checkNames: core.getInput('checkNames', { required: true }),
                 owner: core.getInput('owner') || github_1.context.repo.owner,
                 repo: core.getInput('repo') || github_1.context.repo.repo,
                 ref: core.getInput('ref') || github_1.context.sha,
@@ -78,35 +82,113 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __asyncValues = (this && this.__asyncValues) || function (o) {
+    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+    var m = o[Symbol.asyncIterator], i;
+    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
+    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
+    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.poll = void 0;
 const wait_1 = __nccwpck_require__(5817);
+const checkNamesAsList = (inputCheckName) => __awaiter(void 0, void 0, void 0, function* () {
+    if (!inputCheckName)
+        return [];
+    if (!inputCheckName.includes(','))
+        return [inputCheckName];
+    return inputCheckName.split(',');
+});
 const poll = (options) => __awaiter(void 0, void 0, void 0, function* () {
-    const { client, log, checkName, timeoutSeconds, intervalSeconds, owner, repo, ref } = options;
+    var e_1, _a, e_2, _b, e_3, _c;
+    const { client, log, checkNames, timeoutSeconds, intervalSeconds, owner, repo, ref } = options;
     let now = new Date().getTime();
     const deadline = now + timeoutSeconds * 1000;
+    const checkList = yield checkNamesAsList(checkNames);
+    log(`Processing checkList: ${checkList}`);
+    const checkMap = new Map();
+    for (const name of checkList) {
+        checkMap.set(name, 'pending');
+    }
+    //  checkList.forEach((name: string) => {
+    //    checkMap.set(name, 'pending')
+    //  })
     while (now <= deadline) {
-        log(`Retrieving check runs named ${checkName} on ${owner}/${repo}@${ref}...`);
-        const result = yield client.rest.checks.listForRef({
-            check_name: checkName,
-            owner,
-            repo,
-            ref
-        });
-        log(`Retrieved ${result.data.check_runs.length} check runs named ${checkName}`);
-        const completedCheck = result.data.check_runs.find(checkRun => checkRun.status === 'completed');
-        if (completedCheck) {
-            log(`Found a completed check with id ${completedCheck.id} and conclusion ${completedCheck.conclusion}`);
-            // conclusion is only `null` if status is not `completed`.
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            return completedCheck.conclusion;
+        for (const [key] of checkMap.entries()) {
+            log(`Calling listForRef check runs named ${key} on ${owner}/${repo}@${ref}...`);
+            const result = yield client.rest.checks.listForRef({
+                check_name: key,
+                owner,
+                repo,
+                ref
+            });
+            log(`Retrieved check_runs length of ${result.data.check_runs.length} check runs named ${key}`);
+            const completedCheck = result.data.check_runs.find(checkRun => checkRun.status === 'completed');
+            if (completedCheck) {
+                log(`Found a completed check with id ${completedCheck.id} and conclusion ${completedCheck.conclusion} for ${key}`);
+                // conclusion is only `null` if status is not `completed`.
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                checkMap.set(key, completedCheck.conclusion);
+            }
+            else {
+                log(`Still pending for ${key}`);
+            }
         }
-        log(`No completed checks named ${checkName}, waiting for ${intervalSeconds} seconds...`);
+        let pending_count = 0;
+        try {
+            for (var _d = (e_1 = void 0, __asyncValues(checkMap.entries())), _e; _e = yield _d.next(), !_e.done;) {
+                const [key, value] = _e.value;
+                log(`Conclusion set to ${value} for ${key}`);
+                if (value === 'pending') {
+                    pending_count++;
+                    //break;
+                }
+            }
+        }
+        catch (e_1_1) { e_1 = { error: e_1_1 }; }
+        finally {
+            try {
+                if (_e && !_e.done && (_a = _d.return)) yield _a.call(_d);
+            }
+            finally { if (e_1) throw e_1.error; }
+        }
+        if (!pending_count)
+            break;
+        log(`Some more checks pending, waiting for ${intervalSeconds} seconds...`);
         yield (0, wait_1.wait)(intervalSeconds * 1000);
         now = new Date().getTime();
     }
-    log(`No completed checks after ${timeoutSeconds} seconds, exiting with conclusion 'timed_out'`);
-    return 'timed_out';
+    try {
+        for (var _f = __asyncValues(checkMap.entries()), _g; _g = yield _f.next(), !_g.done;) {
+            const [, value] = _g.value;
+            if (value === 'failure')
+                return 'failure';
+        }
+    }
+    catch (e_2_1) { e_2 = { error: e_2_1 }; }
+    finally {
+        try {
+            if (_g && !_g.done && (_b = _f.return)) yield _b.call(_f);
+        }
+        finally { if (e_2) throw e_2.error; }
+    }
+    try {
+        for (var _h = __asyncValues(checkMap.entries()), _j; _j = yield _h.next(), !_j.done;) {
+            const [, value] = _j.value;
+            if (value === 'pending') {
+                log(`Checks are still pending after ${timeoutSeconds} seconds, exiting with conclusion 'timed_out'`);
+                return 'timed_out';
+            }
+        }
+    }
+    catch (e_3_1) { e_3 = { error: e_3_1 }; }
+    finally {
+        try {
+            if (_j && !_j.done && (_c = _h.return)) yield _c.call(_h);
+        }
+        finally { if (e_3) throw e_3.error; }
+    }
+    return 'success';
 });
 exports.poll = poll;
 

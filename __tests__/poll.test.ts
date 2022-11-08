@@ -120,8 +120,7 @@ test('polls until check is completed', async () => {
 })
 
 test(`returns 'timed_out' if exceeding deadline`, async () => {
-  client.rest.checks.listForRef
-  .mockResolvedValue({
+  client.rest.checks.listForRef.mockResolvedValue({
     data: {
       check_runs: [
         {
