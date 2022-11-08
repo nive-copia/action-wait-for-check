@@ -43,9 +43,6 @@ export const poll = async (options: Options): Promise<string> => {
   for (const name of checkList) {
     checkMap.set(name, 'pending')
   }
-  //  checkList.forEach((name: string) => {
-  //    checkMap.set(name, 'pending')
-  //  })
 
   while (now <= deadline) {
     for (const [key] of checkMap.entries()) {
@@ -83,7 +80,6 @@ export const poll = async (options: Options): Promise<string> => {
       log(`Conclusion set to ${value} for ${key}`)
       if (value === 'pending') {
         pending_count++
-        //break;
       }
     }
 

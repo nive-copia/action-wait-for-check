@@ -110,9 +110,6 @@ const poll = (options) => __awaiter(void 0, void 0, void 0, function* () {
     for (const name of checkList) {
         checkMap.set(name, 'pending');
     }
-    //  checkList.forEach((name: string) => {
-    //    checkMap.set(name, 'pending')
-    //  })
     while (now <= deadline) {
         for (const [key] of checkMap.entries()) {
             log(`Calling listForRef check runs named ${key} on ${owner}/${repo}@${ref}...`);
@@ -141,7 +138,6 @@ const poll = (options) => __awaiter(void 0, void 0, void 0, function* () {
                 log(`Conclusion set to ${value} for ${key}`);
                 if (value === 'pending') {
                     pending_count++;
-                    //break;
                 }
             }
         }
